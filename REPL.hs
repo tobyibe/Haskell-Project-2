@@ -17,7 +17,7 @@ updateVars name int xs = filteredList ++ [(name,int)] where filteredList = filte
 
 -- Return a new set of variables with the given name removed
 dropVar :: Name -> [(Name, Int)] -> [(Name, Int)]
-dropVar = undefined
+dropVar name xs = filter (\x -> fst x /= name) xs
 
 process :: LState -> Command -> IO ()
 process st (Set var e) 
