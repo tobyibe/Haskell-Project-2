@@ -12,7 +12,8 @@ initLState = LState []
 -- that name and value added.
 -- If it already exists, remove the old value
 updateVars :: Name -> Int -> [(Name, Int)] -> [(Name, Int)]
-updateVars = undefined
+updateVars name int [] = [(name,int)]
+updateVars name int xs = filteredList ++ [(name,int)] where filteredList = filter (\x -> fst x /= name) xs
 
 -- Return a new set of variables with the given name removed
 dropVar :: Name -> [(Name, Int)] -> [(Name, Int)]
