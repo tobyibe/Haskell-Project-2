@@ -8,7 +8,8 @@ type Name = String
 -- values. You will need to add other operations, and variables
 data Expr = Add Expr Expr
           | ToString Expr
-          | Val Value
+          | Val Int
+          | VarName Name
   deriving Show
 
 -- These are the REPL commands
@@ -20,6 +21,8 @@ data Value = IntVal Int | StrVal String
   deriving Show
 
 maybeAdd :: Maybe Value -> Maybe Value -> Maybe Value
+maybeAdd Nothing _ = error "Invalid Variable Name"
+maybeAdd _ Nothing = error "Invalid Variable Name"
 maybeAdd (Just (IntVal x)) (Just (IntVal y)) = Just (IntVal (x + y))
 
 maybeValueToInt :: Maybe Value -> Int
@@ -32,9 +35,9 @@ eval :: [(Name, Int)] -> -- Variable name to value mapping
         Expr -> -- Expression to evaluate
         Maybe Value -- Result (if no errors such as missing variables)
 
-eval vars (Val (StrVal x)) = nameToValue vars x -- for StrVal values, string is variable name, replace it with value 
-eval vars (Val (IntVal x)) = Just (IntVal x) -- For IntVal values, just give the value directly
-eval vars (Add x y) = maybeAdd (eval vars x) (eval vars y) -- return an error (because it's not implemented yet!)
+eval vars (VarName x) = nameToValue vars x -- for StrVal values, string is variable name, replace it with value 
+eval vars (Val x) = Just (IntVal x) -- For IntVal values, just give the value directly
+eval vars (Add x y) = maybeAdd (eval vars x) (eval vars y)
 eval vars (ToString x) = Just (StrVal (show (maybeValueToInt (eval vars x))))
 
 digitToInt :: Char -> Int
@@ -62,7 +65,7 @@ pExpr = do t <- pTerm
 
 pFactor :: Parser Expr
 pFactor = do d <- digit
-             return (Val (IntVal (digitToInt d)))
+             return (Val (digitToInt d))
            ||| do v <- letter
                   error "Variables not yet implemented" 
                 ||| do char '('
