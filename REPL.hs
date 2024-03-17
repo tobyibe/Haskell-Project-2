@@ -21,13 +21,14 @@ dropVar name xs = filter (\x -> fst x /= name) xs
 
 process :: LState -> Command -> IO ()
 process st (Set var e) 
-     = do let st' = undefined
+     = do let evaluated = eval (vars st) e
+          newVars = updateVars var (maybeValueToInt evaluated) (vars st)
+          st' = LState{vars = newVars}
           -- st' should include the variable set to the result of evaluating e
           repl st'
 process st (Print e) 
-     = do let st' = undefined
-          -- Print the result of evaluation
-          repl st'
+     = do putStrLn (show (eval (vars st) e))
+          repl st
 
 -- Read, Eval, Print Loop
 -- This reads and parses the input using the pCommand parser, and calls
