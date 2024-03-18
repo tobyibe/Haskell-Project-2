@@ -80,14 +80,14 @@ pExpr = do t <- pTerm
                  ||| return t
 
 pFactor :: Parser Expr
-pFactor = do d <- digit
-             return (Val (digitToInt d))  --Number
-           ||| do t <- identifier         
-                  return (VarName t)      --Variable Name 
-                ||| do char '('
-                       e <- pExpr
-                       char ')'
-                       return e           --Expression
+pFactor = do n <- natural
+             return (Val n)  -- Multi-digit Number
+           ||| do t <- identifier
+                  return (VarName t)  -- Variable Name
+           ||| do char '('
+                  e <- pExpr
+                  char ')'
+                  return e  -- Expression in parentheses
 
 pTerm :: Parser Expr
 pTerm = do f <- pFactor
