@@ -7,6 +7,9 @@ type Name = String
 -- At first, 'Expr' contains only addition, conversion to strings, and integer
 -- values. You will need to add other operations, and variables
 data Expr = Add Expr Expr
+          | Sub Expr Expr
+          | Mul Expr Expr
+          | Div Expr Expr
           | ToString Expr
           | Val Int
           | VarName Name
