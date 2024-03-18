@@ -73,28 +73,28 @@ pExpr :: Parser Expr
 pExpr = do t <- pTerm
            do char '+'
               e <- pExpr
-              return (Add t e)
+              return (Add t e)            --Adding a number to an expression
             ||| do char '-'
                    e <- pExpr
-                   error "Subtraction not yet implemented!" 
+                   return (Sub t e)       --Subtracting a term from an expression
                  ||| return t
 
 pFactor :: Parser Expr
 pFactor = do d <- digit
-             return (Val (digitToInt d))
-           ||| do v <- many1 letter -- Assumes variable names are one or more letters.
-                  return (VarName v)
-           ||| do char '('
-                  e <- pExpr
-                  char ')'
-                  return e
+             return (Val (digitToInt d))  --Number
+           ||| do t <- identifier         
+                  return (VarName t)      --Variable Name 
+                ||| do char '('
+                       e <- pExpr
+                       char ')'
+                       return e           --Expression
 
 pTerm :: Parser Expr
 pTerm = do f <- pFactor
            do char '*'
-              t <- pTerm
-              error "Multiplication not yet implemented" 
+              t <- pFactor
+              return(Mul t f)             --Multiplying two factors
             ||| do char '/'
-                   t <- pTerm
-                   error "Division not yet implemented" 
+                   t <- pFactor
+                   return(Div t f)        --Dividing two factors
                  ||| return f
