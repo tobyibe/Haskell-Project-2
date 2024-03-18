@@ -23,25 +23,38 @@ data Command = Set Name Expr -- assign an expression to a variable name
 data Value = IntVal Int | StrVal String
   deriving Show
 
-maybeAdd :: Maybe Value -> Maybe Value -> Maybe Value
-maybeAdd Nothing _ = error "Invalid Variable Name"
-maybeAdd _ Nothing = error "Invalid Variable Name"
-maybeAdd (Just (IntVal x)) (Just (IntVal y)) = Just (IntVal (x + y))
+-- maybeAdd :: Maybe Value -> Maybe Value -> Maybe Value
+-- maybeAdd Nothing _ = error "Invalid Variable Name"
+-- maybeAdd _ Nothing = error "Invalid Variable Name"
+-- maybeAdd (Just (IntVal x)) (Just (IntVal y)) = Just (IntVal (x + y))
 
-maybeValueToInt :: Maybe Value -> Int
-maybeValueToInt (Just (IntVal x)) = x
+maybeValueToInt :: Maybe Value -> Maybe Int
+maybeValueToInt (Just (IntVal x)) = Just x
+maybeValueToInt _ = Nothing
 
 nameToValue:: [(Name, Int)] -> Name -> Maybe Value
 nameToValue vars name = foldr(\x acc -> if fst x == name then Just (IntVal (snd x)) else acc) Nothing vars
 
-eval :: [(Name, Int)] -> -- Variable name to value mapping
-        Expr -> -- Expression to evaluate
-        Maybe Value -- Result (if no errors such as missing variables)
+eval :: [(Name, Value)] -> Expr -> Maybe Value
+eval vars (VarName x) = lookup x vars  -- Adjusted for simplicity
+eval vars (Val x) = Just (IntVal x)
+eval vars (Add x y) = applyOp (+) (eval vars x) (eval vars y)
+eval vars (Sub x y) = applyOp (-) (eval vars x) (eval vars y)
+eval vars (Mul x y) = applyOp (*) (eval vars x) (eval vars y)
+eval vars (Div x y) = applyDiv (eval vars x) (eval vars y)
+eval vars (ToString x) = case eval vars x of
+                            Just (IntVal n) -> Just (StrVal (show n))
+                            _ -> Nothing
 
-eval vars (VarName x) = nameToValue vars x -- for StrVal values, string is variable name, replace it with value 
-eval vars (Val x) = Just (IntVal x) -- For IntVal values, just give the value directly
-eval vars (Add x y) = maybeAdd (eval vars x) (eval vars y)
-eval vars (ToString x) = Just (StrVal (show (maybeValueToInt (eval vars x))))
+applyOp :: (Int -> Int -> Int) -> Maybe Value -> Maybe Value -> Maybe Value
+applyOp op (Just (IntVal a)) (Just (IntVal b)) = Just (IntVal (op a b))
+applyOp _ _ _ = Nothing
+
+applyDiv :: Maybe Value -> Maybe Value -> Maybe Value
+applyDiv (Just (IntVal a)) (Just (IntVal b))
+    | b /= 0    = Just (IntVal (a `div` b))
+    | otherwise = Nothing  -- Handle division by zero as an error or return Nothing
+applyDiv _ _ = Nothing
 
 digitToInt :: Char -> Int
 digitToInt x = fromEnum x - fromEnum '0'
@@ -69,12 +82,12 @@ pExpr = do t <- pTerm
 pFactor :: Parser Expr
 pFactor = do d <- digit
              return (Val (digitToInt d))
-           ||| do v <- letter
-                  error "Variables not yet implemented" 
-                ||| do char '('
-                       e <- pExpr
-                       char ')'
-                       return e
+           ||| do v <- many1 letter -- Assumes variable names are one or more letters.
+                  return (VarName v)
+           ||| do char '('
+                  e <- pExpr
+                  char ')'
+                  return e
 
 pTerm :: Parser Expr
 pTerm = do f <- pFactor
