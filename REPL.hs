@@ -2,6 +2,7 @@ module REPL where
 
 import Expr
 import Parsing
+import Data.Char (isSpace)
 
 data LState = LState { vars :: [(Name, Value)] }   -- updated to Value instead of int to accept strings and integers
 
@@ -32,7 +33,10 @@ process st (Print e) = do
         Just val -> putStrLn (show val)
         Nothing -> putStrLn "Error evaluating expression." >> repl st
 
-
+trim :: String -> String
+trim = f . f
+   where f = reverse . dropWhile isSpace
+   
 -- Read, Eval, Print Loop
 -- This reads and parses the input using the pCommand parser, and calls
 -- 'process' to process the command.
@@ -42,9 +46,11 @@ repl :: LState -> IO ()
 repl st = do
     putStr "> "
     inp <- getLine
-    if inp == "quit"  -- Check if the user input is "quit"
-    then putStrLn "Exiting..."  -- If so, print an exit message and terminate
-    else case parse pCommand inp of  -- Otherwise, proceed with parsing and processing the command
-            [(cmd, "")] -> process st cmd  -- If parsing is successful, process the command
-            _ -> do putStrLn "Parse error"  -- If parsing fails, print an error message
-                    repl st  -- And call `repl` recursively to continue the loop
+    let trimmedInp = trim inp
+    if trimmedInp == "quit"  -- Use the trimmed input for comparison
+    then putStrLn "Exiting..."
+    else case parse pCommand trimmedInp of  -- Also use trimmed input for parsing
+            [(cmd, "")] -> process st cmd
+            _ -> do putStrLn "Parse error"
+                    repl st
+
