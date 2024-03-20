@@ -1,5 +1,5 @@
 module Expr where
-
+import Control.Applicative ((<|>))
 import Parsing
 
 type Name = String
@@ -69,24 +69,27 @@ pStringLit = do
     return $ StrLit content
 
 pCommand :: Parser Command
-pCommand = do t <- letter
+pCommand = do varName <- identifier  -- Allows for multi-character variable names.
+              space  -- Optional whitespace before '='
               char '='
-              e <- pExpr
-              return (Set [t] e)
+              space  -- Optional whitespace after '='
+              expr <- pExpr
+              return (Set varName expr)
             ||| do string "print"
                    space
-                   e <- pExpr
-                   return (Print e)
+                   expr <- pExpr
+                   return (Print expr)
 
 pExpr :: Parser Expr
 pExpr = do t <- pTerm
-           do char '+'
-              e <- pExpr
-              return (Add t e)            --Adding a number to an expression
-            ||| do char '-'
-                   e <- pExpr
-                   return (Sub t e)       --Subtracting a term from an expression
-                 ||| return t
+           (do space
+               op <- char '+' <|> char '-'
+               space
+               e <- pExpr
+               case op of
+                 '+' -> return (Add t e)
+                 '-' -> return (Sub t e)
+               ) <|> return t
 
 pFactor :: Parser Expr
 pFactor = do n <- natural
@@ -100,10 +103,11 @@ pFactor = do n <- natural
 
 pTerm :: Parser Expr
 pTerm = do f <- pFactor
-           do char '*'
-              t <- pFactor
-              return(Mul t f)             --Multiplying two factors
-            ||| do char '/'
-                   t <- pFactor
-                   return(Div t f)        --Dividing two factors
-                 ||| return f
+           (do space
+               op <- char '*' <|> char '/'
+               space
+               t <- pTerm
+               case op of
+                 '*' -> return (Mul f t)
+                 '/' -> return (Div f t)
+               ) <|> return f
