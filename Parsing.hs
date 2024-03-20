@@ -25,16 +25,18 @@ instance Functor Parser where
                  return (f p')
 
 instance Applicative Parser where
-   pure = return
-   f <*> a = do f' <- f
-                a' <- a
-                return (f' a')
+   pure v = P (\inp -> [(v, inp)])
+   f <*> a = do
+       f' <- f
+       a' <- a
+       return (f' a')
 
 instance Monad Parser where
-   return v                   =  P (\inp -> [(v,inp)])
-   p >>= f                    =  P (\inp -> case parse p inp of
-                                               []        -> []
-                                               [(v,out)] -> parse (f v) out)
+   p >>= f = P (\inp -> case parse p inp of
+                            []        -> []
+                            [(v, out)] -> parse (f v) out)
+   -- `return` is omitted because it's identical to `pure` defined in `Applicative`
+
 
 instance Alternative Parser where
    empty = mzero

@@ -13,6 +13,7 @@ data Expr = Add Expr Expr
           | ToString Expr
           | Val Int
           | VarName Name
+          | StrLit String
   deriving Show
 
 -- These are the REPL commands
@@ -32,8 +33,8 @@ maybeValueToInt :: Maybe Value -> Maybe Int
 maybeValueToInt (Just (IntVal x)) = Just x
 maybeValueToInt _ = Nothing
 
-nameToValue:: [(Name, Int)] -> Name -> Maybe Value
-nameToValue vars name = foldr(\x acc -> if fst x == name then Just (IntVal (snd x)) else acc) Nothing vars
+nameToValue:: [(Name, Value)] -> Name -> Maybe Value
+nameToValue vars name = foldr (\(x, val) acc -> if x == name then Just val else acc) Nothing vars
 
 eval :: [(Name, Value)] -> Expr -> Maybe Value
 eval vars (VarName x) = lookup x vars  -- Adjusted for simplicity
@@ -45,6 +46,7 @@ eval vars (Div x y) = applyDiv (eval vars x) (eval vars y)
 eval vars (ToString x) = case eval vars x of
                             Just (IntVal n) -> Just (StrVal (show n))
                             _ -> Nothing
+eval vars (StrLit s) = Just (StrVal s)
 
 applyOp :: (Int -> Int -> Int) -> Maybe Value -> Maybe Value -> Maybe Value
 applyOp op (Just (IntVal a)) (Just (IntVal b)) = Just (IntVal (op a b))
@@ -58,6 +60,13 @@ applyDiv _ _ = Nothing
 
 digitToInt :: Char -> Int
 digitToInt x = fromEnum x - fromEnum '0'
+
+pStringLit :: Parser Expr
+pStringLit = do
+    char '\"'
+    content <- many (sat (/= '\"'))  -- Parse until the closing quote, excluding the quote character.
+    char '\"'
+    return $ StrLit content
 
 pCommand :: Parser Command
 pCommand = do t <- letter
