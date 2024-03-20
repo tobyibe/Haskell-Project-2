@@ -14,6 +14,7 @@ data Expr = Add Expr Expr
           | Val Int
           | VarName Name
           | StrLit String
+          | ReadStr
   deriving Show
 
 -- These are the REPL commands
@@ -48,6 +49,14 @@ eval vars (ToString x) = case eval vars x of
                             _ -> Nothing
 eval vars (StrLit s) = Just (StrVal s)
 
+evalIO :: [(Name, Value)] -> Expr -> IO (Maybe Value)
+evalIO vars expr = case expr of
+    ReadStr -> do
+        input <- getLine  -- Read input from the user
+        return $ Just (StrVal input)  -- Wrap the input as a StrVal
+    _ -> return $ eval vars expr  -- For all other expressions, defer to the existing eval function
+
+
 applyOp :: (Int -> Int -> Int) -> Maybe Value -> Maybe Value -> Maybe Value
 applyOp op (Just (IntVal a)) (Just (IntVal b)) = Just (IntVal (op a b))
 applyOp _ _ _ = Nothing
@@ -80,8 +89,14 @@ pCommand = do varName <- identifier  -- Allows for multi-character variable name
                    expr <- pExpr
                    return (Print expr)
 
+pReadStr :: Parser Expr
+pReadStr = do
+    string "ReadStr"  -- Adjust the string to match the constructor name
+    return ReadStr
+
 pExpr :: Parser Expr
-pExpr = do t <- pTerm
+pExpr = pReadStr
+    <|> do t <- pTerm
            (do space
                op <- char '+' <|> char '-'
                space

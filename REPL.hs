@@ -3,6 +3,7 @@ module REPL where
 import Expr
 import Parsing
 import Data.Char (isSpace)
+import System.IO (hFlush, stdout)
 
 data LState = LState { vars :: [(Name, Value)] }   -- updated to Value instead of int to accept strings and integers
 
@@ -22,21 +23,24 @@ dropVar name xs = filter (\x -> fst x /= name) xs
 
 process :: LState -> Command -> IO ()
 process st (Set var e) = do
-    case eval (vars st) e of
-        Just val -> do
-            let newVars = updateVars var val (vars st)
+    val <- evalIO (vars st) e  -- Changed to evalIO
+    case val of
+        Just value -> do
+            let newVars = updateVars var value (vars st)
             let st' = LState {vars = newVars}
             repl st'
         Nothing -> putStrLn "Error evaluating expression." >> repl st
 process st (Print e) = do
-    case eval (vars st) e of
-        Just val -> putStrLn (show val)
+    val <- evalIO (vars st) e  -- Changed to evalIO
+    case val of
+        Just (IntVal n) -> putStrLn $ show n
+        Just (StrVal s) -> putStrLn s
         Nothing -> putStrLn "Error evaluating expression." >> repl st
 
 trim :: String -> String
 trim = f . f
    where f = reverse . dropWhile isSpace
-   
+
 -- Read, Eval, Print Loop
 -- This reads and parses the input using the pCommand parser, and calls
 -- 'process' to process the command.
@@ -45,6 +49,7 @@ trim = f . f
 repl :: LState -> IO ()
 repl st = do
     putStr "> "
+    hFlush stdout
     inp <- getLine
     let trimmedInp = trim inp
     if trimmedInp == "quit"  -- Use the trimmed input for comparison
@@ -53,4 +58,3 @@ repl st = do
             [(cmd, "")] -> process st cmd
             _ -> do putStrLn "Parse error"
                     repl st
-
