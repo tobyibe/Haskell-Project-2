@@ -12,7 +12,7 @@ data Expr = Add Expr Expr
           | Div Expr Expr
           | Abs Expr --Absolute val
           | Mod Expr Expr --Modulus
-          | Pow Expr Expr --Exponential
+          | Pow Expr Expr --Exponent
           | ToString Expr
           | Val Int
           | VarName Name
@@ -103,10 +103,12 @@ pExpr :: Parser Expr
 pExpr = pReadStr
     <|> do t <- pTerm
            (do space
-               op <- char '+' <|> char '-' <|> char '^' <|> char '%'
+               op <- char '*' <|> char '/' <|> char '+' <|> char '-' <|> char '^' <|> char '%'
                space
                e <- pExpr
                case op of
+                 '*' -> return (Mul t e)
+                 '/' -> return (Div t e)
                  '+' -> return (Add t e)
                  '-' -> return (Sub t e)
                  '^' -> return (Pow t e)
@@ -133,12 +135,17 @@ pFactor = do n <- natural
                   return e  -- Expression in parentheses
 
 pTerm :: Parser Expr
-pTerm = do f <- pFactor
-           (do space
-               op <- char '*' <|> char '/'
-               space
-               t <- pTerm
-               case op of
-                 '*' -> return (Mul f t)
-                 '/' -> return (Div f t)
-               ) <|> return f
+pTerm = pNegativeExpr <|> pFactor <|> do
+    f <- pFactor
+    (do space
+        op <- char '*' <|> char '/' <|> char '+' <|> char '-' <|> char '^' <|> char '%'
+        space
+        t <- pTerm
+        case op of
+          '*' -> return (Mul f t)
+          '/' -> return (Div f t)
+          '+' -> return (Add f t)
+          '-' -> return (Sub f t)
+          '^' -> return (Pow f t)
+          '%' -> return (Mod f t)
+        ) <|> return f
