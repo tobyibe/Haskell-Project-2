@@ -10,6 +10,9 @@ data Expr = Add Expr Expr
           | Sub Expr Expr
           | Mul Expr Expr
           | Div Expr Expr
+          | Abs Expr --Absolute val
+          | Mod Expr Expr --Modulus
+          | Pow Expr Expr --Exponential
           | ToString Expr
           | Val Int
           | VarName Name
@@ -44,6 +47,8 @@ eval vars (Add x y) = applyOp (+) (eval vars x) (eval vars y)
 eval vars (Sub x y) = applyOp (-) (eval vars x) (eval vars y)
 eval vars (Mul x y) = applyOp (*) (eval vars x) (eval vars y)
 eval vars (Div x y) = applyDiv (eval vars x) (eval vars y)
+eval vars (Mod x y) = applyOp mod (eval vars x) (eval vars y)
+eval vars (Pow x y) = applyOp (^) (eval vars x) (eval vars y)
 eval vars (ToString x) = case eval vars x of
                             Just (IntVal n) -> Just (StrVal (show n))
                             _ -> Nothing
@@ -98,13 +103,24 @@ pExpr :: Parser Expr
 pExpr = pReadStr
     <|> do t <- pTerm
            (do space
-               op <- char '+' <|> char '-'
+               op <- char '+' <|> char '-' <|> char '^' <|> char '%'
                space
                e <- pExpr
                case op of
                  '+' -> return (Add t e)
                  '-' -> return (Sub t e)
+                 '^' -> return (Pow t e)
+                 '%' -> return (Mod t e)
                ) <|> return t
+              
+pNegativeExpr :: Parser Expr
+pNegativeExpr = do
+    space
+    char '-'
+    space
+    e <- pExpr
+    return(Mul (Val (-1)) e)
+
 
 pFactor :: Parser Expr
 pFactor = do n <- natural
