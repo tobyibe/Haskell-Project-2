@@ -1,6 +1,6 @@
 import Test.QuickCheck
 import Expr
--- these tests were ran on non-university servers
+-- these tests were ran on non-university servers under a different version of Haskell
 
 -- Property 1: Identity Property
 prop_evalIdentity :: Int -> Bool
