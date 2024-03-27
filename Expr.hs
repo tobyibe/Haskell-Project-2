@@ -66,6 +66,9 @@ eval vars (ToInt e) = case eval vars e of  -- Convert an expression to an intege
                                                [(n, "")] -> Just (IntVal n)  -- Successfully parsed the entire string
                                                _ -> Nothing  -- Parsing failed or didn't consume the whole string
                           _ -> Nothing
+eval vars (Abs x) = case eval vars x of
+                       Just (IntVal n) -> Just (IntVal (abs n))
+                       _ -> Nothing  -- Handle non-integer cases or errors
 
 -- The evalIO function is similar to eval, but it can perform IO operations. It's used for expressions that need to read input from the user.
 evalIO :: [(Name, Value)] -> Expr -> IO (Maybe Value)
@@ -106,16 +109,25 @@ pStringLit = do
 -- and printing the result of an expression (`Print`). This function uses the `pExpr`
 -- parser to parse the expressions involved in these commands.
 pCommand :: Parser Command
-pCommand = do varName <- identifier  -- Allows for multi-character variable names.
-              space  -- Optional whitespace before '='
-              char '='
-              space  -- Optional whitespace after '='
-              expr <- pExpr
-              return (Set varName expr)
-            ||| do string "print"
-                   space
-                   expr <- pExpr
-                   return (Print expr)
+pCommand = pSet <|> pPrint <|> pInput
+  where
+    pSet = do
+        varName <- identifier
+        space
+        char '='
+        space
+        expr <- pExpr <|> pReadStr  -- Updated to include pReadStr in the choices.
+        return (Set varName expr)
+    pPrint = do
+        string "print"
+        space
+        expr <- pExpr
+        return (Print expr)
+    pInput = do
+        varName <- identifier
+        space
+        string "= input"
+        return (Set varName ReadStr)  -- Directly return a Set command with ReadStr as the expr.
 
 -- The `pReadStr` parser function recognizes the "ReadStr" command used to read a string from the user input.
 -- It matches the literal string "ReadStr" and constructs a `ReadStr` expression.
@@ -135,11 +147,41 @@ pConcat = do
     rightExpr <- pTerm  -- Parse the right-hand operand
     return $ Concat leftExpr rightExpr  -- Return a Concat expression
 
+pToString :: Parser Expr
+pToString = do
+    string "toString"
+    space
+    char '('
+    expr <- pExpr
+    char ')'
+    return $ ToString expr
+
+pToInt :: Parser Expr
+pToInt = do
+    string "toInt"
+    space
+    char '('
+    expr <- pExpr
+    char ')'
+    return $ ToInt expr
+
+-- Parsing function for 'abs' expressions
+pAbs :: Parser Expr
+pAbs = do
+    string "abs"
+    space
+    char '('
+    expr <- pExpr  -- Parse the expression inside the parentheses
+    char ')'
+    return $ Abs expr  -- Construct an Abs expression
 
 -- The `pExpr` parser function composes various expression parsers, attempting to parse different kinds of expressions.
 -- It tries to parse string concatenation, string reading, string literals, and other expressions defined by `pTerm`.
 pExpr :: Parser Expr
-pExpr = pConcat  
+pExpr = pAbs
+    <|> pConcat
+    <|> pToString
+    <|> pToInt
     <|> pReadStr
     <|> pStringLit
     <|> do t <- pTerm
@@ -156,7 +198,7 @@ pExpr = pConcat
                  '%' -> return (Mod t e)
                ) <|> return t
   
--- The `pNegativeExpr` parser function handles negative expressions.
+-- The `pNegativeExpr` parser function handles negative expressins.
 -- It specifically looks for a "-" sign followed by an expression, and constructs a multiplication
 -- by -1 expression to represent the negative value.  
 pNegativeExpr :: Parser Expr

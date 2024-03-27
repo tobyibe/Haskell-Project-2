@@ -37,19 +37,32 @@ dropVar name xs = filter (\x -> fst x /= name) xs
 -- @param cmd The command to process.
 process :: LState -> Command -> IO ()
 process st (Set var e) = do
-    val <- evalIO (vars st) e
-    case val of
-        Just value -> do
-            let newVars = updateVars var value (vars st)
+    case e of
+        ReadStr -> do
+            input <- getLine -- Directly read input from the user
+            let newVars = updateVars var (StrVal input) (vars st) -- Create a StrVal from input and update vars
             let st' = LState {vars = newVars}
-            repl st'  -- Update the state with the new variable value.
-        Nothing -> putStrLn "Error evaluating expression." >> repl st
+            repl st' -- Continue with the updated state
+        _ -> do
+            val <- case eval (vars st) e of
+                Just value -> return value
+                Nothing -> do
+                    putStrLn "Error evaluating expression."
+                    return (IntVal 0) -- or any default value you prefer
+            let newVars = updateVars var val (vars st)
+            let st' = LState {vars = newVars}
+            repl st'
+
 process st (Print e) = do
-    val <- evalIO (vars st) e
+    val <- case eval (vars st) e of
+        Just value -> return value
+        Nothing -> do
+            putStrLn "Error evaluating expression."
+            return (IntVal 0) -- or any default value you prefer
     case val of
-        Just (IntVal n) -> putStrLn $ show n  -- Print integer values directly.
-        Just (StrVal s) -> putStrLn s  -- Print string values directly.
-        Nothing -> putStrLn "Error evaluating expression." >> repl st  -- Handle evaluation errors.
+        IntVal n -> putStrLn $ show n
+        StrVal s -> putStrLn s
+    repl st
 
 -- | Trims leading and trailing whitespace from a string.
 -- @param String to trim.
