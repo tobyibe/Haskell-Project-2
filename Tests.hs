@@ -1,5 +1,6 @@
 import Test.QuickCheck
 import Expr
+-- these tests were ran on non-university servers
 
 -- Property 1: Identity Property
 prop_evalIdentity :: Int -> Bool
